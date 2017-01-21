@@ -1,0 +1,83 @@
+---
+title: "newmd"
+author: "Asa Julien"
+date: "January 12, 2017"
+output: html_document
+---
+
+First assignment
+
+Intermediate
+```{r, echo=FALSE}
+data(iris)
+head(iris)
+
+sp_ids = unique(iris$Species)
+
+output = matrix(0, nrow=length(sp_ids), ncol=ncol(iris)-1)
+rownames(output) = sp_ids
+colnames(output) = names(iris[ , -ncol(iris)])
+
+for(i in seq_along(sp_ids)) {
+    iris_sp = subset(iris, subset=Species == sp_ids[i], select=-Species)
+    for(j in 1:(ncol(iris_sp))) {
+        output[i,j]<-mean(iris_sp[,j])
+    }
+}
+output
+
+for(i in seq_along(sp_ids)) {
+    iris_sp = subset(iris, subset=Species == sp_ids[i], select=-Species)
+    output[i,]=apply(iris_sp,2,mean)
+}
+output
+
+#1. This for loop is finding the average value of all columns for each species. 
+#2. First there is a loop that subsets the data by species (3 spp, 3 subsets). Then there is a loop through each column (j in 1: # columns), and within each column there is a loop which adds up the values (x+iris_sp[k,j]) and the number of rows (y+1). Then the sum (x) is divided by the number of rows (y), producing the average.
+#3. Output = Average; X = Sum (of whichever column); Y = Number of individuals
+#4. Instead of the second for loop you could just put mean[,j]. 
+
+#5-7
+x = 1:10
+floop = function(x) {
+    y = 0
+    for(i in x) {
+        y[i] = sum(x[1:i])
+        if (y[i] > 10) {
+            y[i] = NA
+        } 
+    }
+}
+floop(x)
+
+
+```
+
+N
+
+```{r, echo=FALSE}
+sp_ids = unique(iris$Species)
+
+output = matrix(0, nrow=length(sp_ids), ncol=ncol(iris)-1)
+rownames(output) = sp_ids
+colnames(output) = names(iris[ , -ncol(iris)])
+
+for(i in seq_along(sp_ids)) {
+    iris_sp = subset(iris, subset=Species == sp_ids[i], select=-Species)
+    for(j in 1:(ncol(iris_sp))) {
+        x = 0
+        y = 0
+        if (nrow(iris_sp) > 0) {
+            for(k in 1:nrow(iris_sp)) {
+                x = x + iris_sp[k, j]
+                y = y + 1
+            }
+            output[i, j] = x / y 
+        }
+    }
+}
+output
+
+```
+
+N
