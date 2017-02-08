@@ -1,0 +1,39 @@
+---
+title: "Multivariate models"
+output: html_document
+---
+
+T
+```{r}
+library(vegan)
+data(dune)
+data(dune.env)
+?dune
+
+#NMDS
+dune_mds = metaMDS(dune, distance = "bray")
+plot(dune_mds)
+text(dune_mds, "sp", cex=.5) # generate vector of colors
+
+color_vect = rev(terrain.colors(6))[-1]
+points(dune_mds, "sites", pch=19, col=color_vect[dune.env$Moisture])
+legend('topright', paste("Moisture =", 1:5, sep=''), col=color_vect, pch=19)
+
+#Higher moisture species and lower moisture species seem to be clustered together. It would be nice to make a biplot to see how the moisture gradient shows up on this plot, and to see if there's a relationship (i.e. does the presence of one high moisture species explain the presence of another? not sure if I phrased that correctly).
+
+#CCA
+dune.moist = dune.env[,c(1,2)] #just get moistures (and A1?)
+dune_cca = cca(dune ~.,dune.moist) #could do with all of the variables but it's messy
+summary(dune_cca)
+plot(dune_cca, scaling = 1)
+
+#Not sure if I did this right. It doesn't look like there are distinct groups.
+```
+
+Y
+
+```{r, echo=FALSE}
+
+```
+
+N
