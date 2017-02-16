@@ -63,6 +63,8 @@ pseudo_r2 = function(glm_mod) { 1 - glm_mod$deviance / glm_mod$null.deviance }
 pseudo_r2(acer.glm.2)
 pseudo_r2(acer.glm)
 
+plot(acer.glm.2)
+
 anova(lm.acer.2,acer.glm.2) #RSS is much lower in gls model
 
 ```

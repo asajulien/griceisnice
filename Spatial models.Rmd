@@ -1,0 +1,50 @@
+---
+title: "Spatial models"
+output: html_document
+---
+
+T
+
+```{r, echo=FALSE}
+library(vegan)
+library(lattice)
+library(nlme)
+data(BCI)
+## UTM Coordinates (in metres)
+BCI_xy = data.frame(x = rep(seq(625754, 626654, by=100), each=5), 
+                    y = rep(seq(1011569,  1011969, by=100), len=50))
+
+colSums(BCI) #rare species: Zanthoxylum juniperinum
+#common species: Faramea occidentalis
+
+xyplot(BCI$Zanthoxylum.juniperinum ~ BCI_xy$x) #not much of a pattern
+xyplot(BCI$Zanthoxylum.juniperinum ~ BCI_xy$y) #pattern here
+
+xyplot(BCI$Faramea.occidentalis ~ BCI_xy$x) #maybe an optimal lat
+xyplot(BCI$Faramea.occidentalis ~ BCI_xy$y) #maybe a pattern...
+
+model.1 = glm(Drypetes.standleyi ~ Xylopia.macrantha, data = BCI)
+summary(model.1)
+plot(model.1)
+
+model.2 = glm(Drypetes.standleyi ~ Cordia.lasiocalyx + Hirtella.triandra + Picramnia.latifolia + Quassia.amara + Tabernaemontana.arborea + Trattinnickia.aspera + Xylopia.macrantha, data = BCI)
+summary(model.2)
+
+bci.df = data.frame(BCI, BCI_xy)
+
+gls.1 = gls(Drypetes.standleyi ~ Xylopia.macrantha, data = bci.df)
+plot(Variogram(gls.1, form = ~ x + y))
+summary(gls.1)
+
+gls.2 = gls(Drypetes.standleyi ~ Cordia.lasiocalyx + Hirtella.triandra + Picramnia.latifolia + Quassia.amara + Tabernaemontana.arborea + Trattinnickia.aspera + Xylopia.macrantha, data = bci.df)
+plot(Variogram(gls.2, form = ~ x + y))
+summary(gls.2)
+```
+
+NT
+
+```{r, echo=FALSE}
+
+```
+
+N
