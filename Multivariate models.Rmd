@@ -27,13 +27,25 @@ dune_cca = cca(dune ~.,dune.moist) #could do with all of the variables but it's 
 summary(dune_cca)
 plot(dune_cca, scaling = 1)
 
+#vs. rda
+dune.rda = rda(dune, dune.env)
+summary(dune.rda)
+plot(dune.rda)
+
+dune.pca = rda(dune)
+summary(dune.pca)
+plot(dune.pca)
+biplot.rda(dune.env)
+
 #Not sure if I did this right. It doesn't look like there are distinct groups.
 ```
 
 Y
 
 ```{r, echo=FALSE}
+#rda 
 
+#going to try a PCA analysis for the halibut
 ```
 
 N
