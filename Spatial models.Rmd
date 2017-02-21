@@ -17,28 +17,75 @@ BCI_xy = data.frame(x = rep(seq(625754, 626654, by=100), each=5),
 colSums(BCI) #rare species: Zanthoxylum juniperinum
 #common species: Faramea occidentalis
 
+# compute the species-abundance distribution
+sad = apply(BCI, 2, sum)
+density()
+# examine log transformed frequency distribution
+plot(density(log10(sad)))
+
+sp_names = names(BCI)[order(sad)]
+sad_ord = sad[order(sad)]
+rare_sp = sp_names[sad_ord > 10^1.5][1]
+comm_sp = sp_names[sad_ord > 10^3][1]
+
+get_col_brks = function(x) {
+    col_brks = hist(x, plot=F)$breaks
+    col_indices = as.numeric(cut(x, col_brks))
+    cols = rev(terrain.colors(length(col_brks)))
+    cols[col_indices]
+}
+
+# one way to show the spatial patterns
+par(mfrow=c(1,2))
+plot(BCI_xy, type='n')
+points(BCI_xy, col=get_col_brks(BCI[ , rare_sp]), pch=15, cex=3)
+plot(BCI_xy, type='n')
+points(BCI_xy, col=get_col_brks(BCI[ , comm_sp]), pch=15, cex=3)
+
+# here is a better way that doesn't require guessing on the point size
+par(mfrow=c(1,2))
+image(matrix(BCI[ , rare_sp], nrow=10, ncol=5, byrow = TRUE),
+      col=rev(terrain.colors(12)))
+image(matrix(BCI[ , comm_sp], nrow=10, ncol=5, byrow = TRUE),
+      col=rev(terrain.colors(12)))
+
+# Now let's examine the bivariate relationship between spatial and ecological
+# distance 
+rare_dist = dist(BCI[ , rare_sp])
+comm_dist = dist(BCI[ , comm_sp])
+geo_dist = dist(BCI_xy)
+
+rare_lm = lm(rare_dist ~ geo_dist)
+comm_lm = lm(comm_dist ~ geo_dist)
+
+summary(comm_lm)
+
+
 xyplot(BCI$Zanthoxylum.juniperinum ~ BCI_xy$x) #not much of a pattern
 xyplot(BCI$Zanthoxylum.juniperinum ~ BCI_xy$y) #pattern here
 
 xyplot(BCI$Faramea.occidentalis ~ BCI_xy$x) #maybe an optimal lat
 xyplot(BCI$Faramea.occidentalis ~ BCI_xy$y) #maybe a pattern...
 
-model.1 = glm(Drypetes.standleyi ~ Xylopia.macrantha, data = BCI)
+
+#models with species and distance
+bci_dat = data.frame(BCI, BCI_xy)
+model.1 = glm(Drypetes.standleyi ~ Xylopia.macrantha, data = bci_dat)
 summary(model.1)
 plot(model.1)
 
 model.2 = glm(Drypetes.standleyi ~ Cordia.lasiocalyx + Hirtella.triandra + Picramnia.latifolia + Quassia.amara + Tabernaemontana.arborea + Trattinnickia.aspera + Xylopia.macrantha, data = BCI)
 summary(model.2)
 
-bci.df = data.frame(BCI, BCI_xy)
-
-gls.1 = gls(Drypetes.standleyi ~ Xylopia.macrantha, data = bci.df)
+gls.1 = gls(Drypetes.standleyi ~ Xylopia.macrantha, data = bci_dat)
 plot(Variogram(gls.1, form = ~ x + y))
 summary(gls.1)
 
-gls.2 = gls(Drypetes.standleyi ~ Cordia.lasiocalyx + Hirtella.triandra + Picramnia.latifolia + Quassia.amara + Tabernaemontana.arborea + Trattinnickia.aspera + Xylopia.macrantha, data = bci.df)
+gls.2 = gls(Drypetes.standleyi ~ Cordia.lasiocalyx + Hirtella.triandra + Picramnia.latifolia + Quassia.amara + Tabernaemontana.arborea + Trattinnickia.aspera + Xylopia.macrantha, data = bci_dat)
 plot(Variogram(gls.2, form = ~ x + y))
 summary(gls.2)
+
+anova(gls.2, gls.1)
 ```
 
 NT
