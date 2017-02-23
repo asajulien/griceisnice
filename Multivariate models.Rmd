@@ -21,11 +21,18 @@ legend('topright', paste("Moisture =", 1:5, sep=''), col=color_vect, pch=19)
 
 #Higher moisture species and lower moisture species seem to be clustered together. It would be nice to make a biplot to see how the moisture gradient shows up on this plot, and to see if there's a relationship (i.e. does the presence of one high moisture species explain the presence of another? not sure if I phrased that correctly).
 
+dune.fit = envfit(dune_mds, dune.env)
+plot(dune.fit)
+
 #CCA
-dune.moist = dune.env[,c(1,2)] #just get moistures (and A1?)
-dune_cca = cca(dune ~.,dune.moist) #could do with all of the variables but it's messy
+dune.moist = dune.env[,c(1,2)] #just get moistures (and A1)
+dune_cca = cca(dune ~., dune.moist) #could do with all of the variables but it's messy
 summary(dune_cca)
 plot(dune_cca, scaling = 1)
+
+dune_cca2 = cca(dune ~., dune.env)
+plot(dune_cca2)
+summary(dune_cca2)
 
 #vs. rda
 dune.rda = rda(dune, dune.env)

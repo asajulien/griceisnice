@@ -3,8 +3,6 @@ title: "Spatial models"
 output: html_document
 ---
 
-T
-
 ```{r, echo=FALSE}
 library(vegan)
 library(lattice)
@@ -19,7 +17,6 @@ colSums(BCI) #rare species: Zanthoxylum juniperinum
 
 # compute the species-abundance distribution
 sad = apply(BCI, 2, sum)
-density()
 # examine log transformed frequency distribution
 plot(density(log10(sad)))
 
@@ -28,26 +25,6 @@ sad_ord = sad[order(sad)]
 rare_sp = sp_names[sad_ord > 10^1.5][1]
 comm_sp = sp_names[sad_ord > 10^3][1]
 
-get_col_brks = function(x) {
-    col_brks = hist(x, plot=F)$breaks
-    col_indices = as.numeric(cut(x, col_brks))
-    cols = rev(terrain.colors(length(col_brks)))
-    cols[col_indices]
-}
-
-# one way to show the spatial patterns
-par(mfrow=c(1,2))
-plot(BCI_xy, type='n')
-points(BCI_xy, col=get_col_brks(BCI[ , rare_sp]), pch=15, cex=3)
-plot(BCI_xy, type='n')
-points(BCI_xy, col=get_col_brks(BCI[ , comm_sp]), pch=15, cex=3)
-
-# here is a better way that doesn't require guessing on the point size
-par(mfrow=c(1,2))
-image(matrix(BCI[ , rare_sp], nrow=10, ncol=5, byrow = TRUE),
-      col=rev(terrain.colors(12)))
-image(matrix(BCI[ , comm_sp], nrow=10, ncol=5, byrow = TRUE),
-      col=rev(terrain.colors(12)))
 
 # Now let's examine the bivariate relationship between spatial and ecological
 # distance 
