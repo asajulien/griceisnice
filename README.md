@@ -1,5 +1,5 @@
 # griceisnice
-The Thesis project.Rmd file contains all code related to my thesis project.
+The Thesis project.Rmd file contains all code related to my thesis project. I've been working from a different repository, but I recently (4/18/17) moved everything to this one becasue the organization makes a little more sense. And this one isn't private.
 
 
 
