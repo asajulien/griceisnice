@@ -1,0 +1,77 @@
+---
+title: "Multivariate models"
+output: html_document
+---
+
+T
+```{r}
+library(vegan)
+data(dune)
+data(dune.env)
+?dune
+
+#NMDS
+dune_mds = metaMDS(dune, distance = "bray")
+plot(dune_mds)
+text(dune_mds, "sp", cex=.5) # generate vector of colors
+
+color_vect = rev(terrain.colors(6))[-1]
+points(dune_mds, "sites", pch=19, col=color_vect[dune.env$Moisture])
+legend('topright', paste("Moisture =", 1:5, sep=''), col=color_vect, pch=19)
+
+#Higher moisture species and lower moisture species seem to be clustered together. It would be nice to make a biplot to see how the moisture gradient shows up on this plot, and to see if there's a relationship (i.e. does the presence of one high moisture species explain the presence of another? not sure if I phrased that correctly).
+
+dune.fit = envfit(dune_mds, dune.env)
+plot(dune.fit)
+
+#CCA
+dune.moist = dune.env[,c(1,2)] #just get moistures (and A1)
+dune_cca = cca(dune ~., dune.moist) #could do with all of the variables but it's messy
+summary(dune_cca)
+plot(dune_cca, scaling = 1)
+
+dune_cca2 = cca(dune ~., dune.env)
+plot(dune_cca2)
+summary(dune_cca2)
+
+#vs. rda
+dune.rda = rda(dune, dune.env)
+summary(dune.rda)
+plot(dune.rda)
+
+dune.pca = rda(dune)
+summary(dune.pca)
+plot(dune.pca)
+biplot.rda(dune.env)
+
+#Not sure if I did this right. It doesn't look like there are distinct groups.
+```
+
+
+#Testing some thesis data, not currently up to date
+```{r, echo=FALSE}
+#rda 
+marsh.env = read.csv("~/Desktop/Diversity_abundance.csv")
+marsh = read.csv("~/Desktop/marsh.csv")
+marsh2 = marsh[,-11]
+
+#PCA analysis
+marsh.pca = rda(marsh2)
+summary(marsh.pca)
+plot(marsh.pca) # "sites" aren't really sites, they are sampling events. Not really sure if this works, given that. Why are you even doing a pca??
+
+#rda analysis
+marsh.rda = rda(marsh2, marsh.env[, c(5,6)])
+summary(marsh.rda)
+plot(marsh.rda)
+
+#cca why?
+marsh.cca = cca(marsh2 ~., marsh.env)
+
+#bray distance and clustering
+marsh.dist = vegdist(marsh2, method = "bray")
+marsh.dist
+summary(marsh)
+```
+
+N

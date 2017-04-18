@@ -1,0 +1,79 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r, echo=FALSE}
+tree.data = read.csv("~/griceisnice/treedata.csv", quote="")
+head(tree.data)
+
+require(dplyr)
+#Acer rubrum
+data.acer = tree.data %>%
+  filter(X..species.. == "\"\"Acer rubrum\"\"")
+
+lm.acer = with(data.acer, lm(X..cover.. ~ X..disturb.. + X..elev.. + X..tci.. + X..streamdist..))
+summary(lm.acer)
+lm.acer.2 = with(data.acer, lm(X..cover.. ~ X..elev.. + X..tci.. + X..streamdist..))
+summary(lm.acer.2)
+lm.acer.3 = with(data.acer, lm(X..cover.. ~ X..elev..))
+summary(lm.acer.3)
+
+require(car)
+require(MASS)
+AIC(lm.acer, lm.acer.2, lm.acer.3)
+anova(lm.acer, lm.acer.2, lm.acer.3)
+Anova(lm.acer.2)
+stepAIC(lm.acer) #model 2 seems to be the best
+
+plot(lm.acer.2) #not great
+
+#Abies fraseri
+data.abies = tree.data %>%
+  filter(X..species.. == "\"\"Abies fraseri\"\"")  
+
+lm.abies = with(data.abies, lm(X..cover.. ~ X..disturb.. + X..elev.. + X..tci.. + X..streamdist..))
+summary(lm.abies)
+
+lm.abies.2 = with(data.abies, lm(X..cover.. ~ X..tci.. + X..elev..))
+summary(lm.abies.2)
+
+require(car)
+require(MASS)
+AIC(lm.abies,lm.abies.2)
+Anova(lm.abies.2)
+stepAIC(lm.abies) #second model seems to be the best
+
+plot(lm.abies.2) #a few outliers and resids aren't normal
+
+#In  both species, elevation seems to be the most explanatory variable
+
+```
+
+GLMs
+
+```{r}
+acer.glm = glm(X..cover.. ~ X..disturb.. + X..elev.. + X..tci.. + X..streamdist.., data = data.acer, family = "poisson")
+summary(acer.glm)
+stepAIC(acer.glm) #New model:
+acer.glm.2 = glm(X..cover.. ~ X..elev.. + X..tci.. + X..streamdist.., data = data.acer, family = "poisson")
+summary(acer.glm.2)
+
+pseudo_r2 = function(glm_mod) { 1 - glm_mod$deviance / glm_mod$null.deviance }
+pseudo_r2(acer.glm.2)
+pseudo_r2(acer.glm)
+
+plot(acer.glm.2)
+
+anova(lm.acer.2,acer.glm.2) #RSS is much lower in gls model
+
+```
+
+Summary: in both species, elevation was the best explanatory variable. Distance to stream was also somewhat important for Acer rubrum. Using a poisson distribution for the error seemed to reduce the residual sums of squares, though I could be wrong.
+
+```{r}
+spp.data = tree.data %>%
+  select(X...plotID..,X..species.., X..cover.., X..elev.., X..tci..,X..streamdist.., X..disturb..) %>%
+  group_by(X..species..) %>%
+  summarise(mean(..X..cover.., X..elev.., X..tci..,X..streamdist.., X..disturb..))
+```

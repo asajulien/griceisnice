@@ -1,0 +1,160 @@
+---
+title: "GIS and R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(maps)
+library(sp)       
+library(maptools)
+library(rgdal) 
+library(lattice)  # a plotting package for making lattice graphics
+library(classInt) # used to do binning
+
+
+# First, make some maps. The "maps" package has databases="world","usa","state",
+# or "county". (There are also a few for foreign countries like France and
+# Italy.) In each database, you can plot any region or group of regions.
+
+world = map(database="world")
+map(database="world", regions=c("Micronesia", "China"))
+map(database="state",regions=c("maine","north carolina","south carolina"))
+nc_county = map(database="county",regions="maine")
+triangle = map(database="county",
+               regions=c("north carolina,orange","north carolina,wake","north carolina,durham"),
+               fill=T, plot=F)
+triangle$names
+IDs = sub("^north carolina,","",triangle$names)  
+IDs
+
+tri_sp = map2SpatialPolygons(triangle,IDs,CRS("+proj=longlat"))
+
+plot(tri_sp, axes=T)
+
+# add data to make spatial polygons data frame
+population = c(266132, 132272, 892409) 
+# population data from office of state budget and management
+tri_pop = data.frame(IDs, population)
+rownames(tri_pop) = IDs
+tri_pop
+
+tri_spdf = SpatialPolygonsDataFrame(tri_sp, tri_pop)
+
+# make a map of population by county
+
+spplot(tri_spdf, 'population')
+
+
+######################################
+world = map(database="world", fill=T, plot=F)
+world_longlat = map2SpatialPolygons(world, IDs=world$names,
+                                    CRS("+proj=longlat +ellps=WGS84"))
+
+# use fucntion spTransform to transform to mercator
+world_merc = spTransform(world_longlat, CRS("+proj=merc"))
+# Lambert Azimuthal Equal Area
+world_laea = spTransform(world_longlat, CRS("+proj=laea"))
+# sinusoidal
+world_sinusoidal = spTransform(world_longlat, CRS("+proj=sinu"))
+
+# plot the four together to see the difference. Mercator projection distorts
+# area far from the equator. LAEA is accurately represents area but not angles.
+# Sinusoidal is equal area and conserves distances along parallels.
+par(mfrow=c(1,1))
+plot(world_longlat)
+
+
+```
+
+
+```{r pressure, echo=FALSE}
+read.shape = function(shape_name, path=NULL) {
+    require(rgdal)
+    if (is.null(path)) {
+        path = getwd()
+    }
+    fileName = paste(shape_name, '.shp', sep='')    
+    shp = readOGR(file.path(path, fileName), shape_name)
+}  
+
+# use readOGR to bring in data. First argument is data source name (in this case
+# the folder that our data is in), and second argument is the name of the layer.
+# Use read.shape because it brings in the projection.
+
+fire2010 = read.shape("modis_fire_2010_365_conus", path=NULL)
+
+class(fire2010)
+names(fire2010)  
+proj4string(fire2010)  # retrieves projection
+dim(fire2010)
+plot(fire2010)
+summary(fire2010)
+fire = subset(fire2010, fire2010$JULIAN > 182)
+class(fire)
+USA = map(database='state', plot=F, fill=T)
+names(USA)
+fire_proj = proj4string(fire)
+USA_sp = map2SpatialPolygons(USA, IDs=USA$names, CRS(fire_proj))
+
+
+# overlay performs a "point in polygon" operation--meaning that it will return
+# us a vector giving the index of which polygon in USA_sp each point in firehot
+# is. We then index that to names(USA_sp) to get the name of the state for that
+# index.
+
+indices = over(fire, USA_sp)
+fire$state = names(USA_sp)[indices]
+names(fire)
+# Then, subset the ones from NC. We have to use grep because there are actually
+# three polygons for NC.
+firenc = fire[grep("north carolina", fire$state), ]
+dim(firenc)
+
+NC = map(database='state', regions='north carolina', fill=T, plot=F)
+names(NC)
+proj = CRS("+proj=longlat +ellps=GRS80 +datum=NAD83 +no_defs +towgs84=0,0,0")
+NC_sp = map2SpatialPolygons(NC, IDs=NC$names, proj)
+                            
+
+
+# here you have to make all the "layout parameters" first to put into the spplot
+# function. Make the NC # outline, the scale, North arrow, etc.
+nc_outline = list("sp.polygons", NC_sp)
+scale = list("SpatialPolygonsRescale", layout.scale.bar(), offset=c(-83.5,34),
+             scale=2, fill=c("transparent", "black"))
+# text for scale bar
+start = list("sp.text", c(-83.5, 34.2), "0", cex=0.7)
+stop = list("sp.text", c(-81.5, 34.2), "2 degrees", cex=0.7)
+# north arrow
+arrow = list("SpatialPolygonsRescale", layout.north.arrow(), 
+             offset=c(-84.2,33.7), scale=0.7)
+
+# specify where we want the breaks using classIntervals. Can do "ﬁxed", "sd",
+# "equal", "pretty", "quantile", "kmeans", "hclust", "bclust", "ﬁsher", or
+# "jenks". You don't need to specify breaks, you'll get equal intervals by
+# default.
+q5 = classIntervals(firenc$TEMP, n=5, style="quantile")
+
+fire_layout = list(nc_outline, scale, start, stop, arrow)
+spplot(firenc, 'TEMP', xlim=c(-85,-75), ylim=c(33.5,37), cuts=q5$brks,
+       sp.layout=fire_layout, col.regions=heat.colors(5)[5:1], cex=1,
+       key.space=list(space="right", border=TRUE,cex=0.7))  
+
+# for the last step, let's export this as a KML (readable by google earth) using
+# write OGR and plot the locations of fires in NC in google earth. The first
+# argument is the object we want to export, the second is the filename (by
+# default it will go in our working directory), the layer we want to export, and
+# the file format.
+writeOGR(firenc, "firenctemp.kml", "TEMP", "KML")
+
+## Rasters ----------------------------------------
+## download Rdata file here:
+## https://www.dropbox.com/s/gafxazc9575nf3j/bioclim_10m.Rdata?dl=0
+library(raster)
+
+load('bioclim_10m.Rdata')
+plot(bioStack, "mat")
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

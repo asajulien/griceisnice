@@ -1,0 +1,74 @@
+---
+title: "Spatial models"
+output: html_document
+---
+
+```{r, echo=FALSE}
+library(vegan)
+library(lattice)
+library(nlme)
+data(BCI)
+## UTM Coordinates (in metres)
+BCI_xy = data.frame(x = rep(seq(625754, 626654, by=100), each=5), 
+                    y = rep(seq(1011569,  1011969, by=100), len=50))
+
+colSums(BCI) #rare species: Zanthoxylum juniperinum
+#common species: Faramea occidentalis
+
+# compute the species-abundance distribution
+sad = apply(BCI, 2, sum)
+# examine log transformed frequency distribution
+plot(density(log10(sad)))
+
+sp_names = names(BCI)[order(sad)]
+sad_ord = sad[order(sad)]
+rare_sp = sp_names[sad_ord > 10^1.5][1]
+comm_sp = sp_names[sad_ord > 10^3][1]
+
+
+# Now let's examine the bivariate relationship between spatial and ecological
+# distance 
+rare_dist = dist(BCI[ , rare_sp])
+comm_dist = dist(BCI[ , comm_sp])
+geo_dist = dist(BCI_xy)
+
+rare_lm = lm(rare_dist ~ geo_dist)
+comm_lm = lm(comm_dist ~ geo_dist)
+
+summary(comm_lm)
+
+
+xyplot(BCI$Zanthoxylum.juniperinum ~ BCI_xy$x) #not much of a pattern
+xyplot(BCI$Zanthoxylum.juniperinum ~ BCI_xy$y) #pattern here
+
+xyplot(BCI$Faramea.occidentalis ~ BCI_xy$x) #maybe an optimal lat
+xyplot(BCI$Faramea.occidentalis ~ BCI_xy$y) #maybe a pattern...
+
+
+#models with species and distance
+bci_dat = data.frame(BCI, BCI_xy)
+model.1 = glm(Drypetes.standleyi ~ Xylopia.macrantha, data = bci_dat)
+summary(model.1)
+plot(model.1)
+
+model.2 = glm(Drypetes.standleyi ~ Cordia.lasiocalyx + Hirtella.triandra + Picramnia.latifolia + Quassia.amara + Tabernaemontana.arborea + Trattinnickia.aspera + Xylopia.macrantha, data = BCI)
+summary(model.2)
+
+gls.1 = gls(Drypetes.standleyi ~ Xylopia.macrantha, data = bci_dat)
+plot(Variogram(gls.1, form = ~ x + y))
+summary(gls.1)
+
+gls.2 = gls(Drypetes.standleyi ~ Cordia.lasiocalyx + Hirtella.triandra + Picramnia.latifolia + Quassia.amara + Tabernaemontana.arborea + Trattinnickia.aspera + Xylopia.macrantha, data = bci_dat)
+plot(Variogram(gls.2, form = ~ x + y))
+summary(gls.2)
+
+anova(gls.2, gls.1)
+```
+
+NT
+
+```{r, echo=FALSE}
+
+```
+
+N
