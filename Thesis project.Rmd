@@ -1,97 +1,105 @@
 ---
 title: "Thesis project"
-output: html_document
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
 ---
-##Linear models
+##Drop net sampling; linear models
 ```{r}
+#packages
 library(car)
 library(nlme)
 library(lattice)
 library(MASS)
 library(dplyr)
 library(vegan)
+library(lattice)
+library(ggplot2)
 
 #files
 new_df <- read.csv("~/Documents/Ribbed mussel/Data/Drop net/CSV files/Diversity_abundance.csv")
 legare_net = read.csv("~/Documents/Ribbed mussel/Data/Drop net/CSV files/Legare.csv")
 
 #models
-test_x = lm(log(Abundance + 1) ~ Salinity + Temperature + CharlestonHeight + Treatment + Pairing, data = new_df) 
+test_x = lm(log(Abundance + 1) ~ Salinity + CharlestonHeight + Treatment * Temperature + Pairing, data = new_df) 
 summary(test_x)
 plot(test_x)
 
-test_y = lm(Richness ~ Salinity + Temperature + CharlestonHeight + Treatment + Pairing, data = new_df) 
+test_y = lm(Richness ~ Salinity + CharlestonHeight + Treatment * Temperature + Pairing, data = new_df) 
 summary(test_y)
 plot(test_y)
 
-test_z = lm(Shannon ~ Salinity + Temperature + CharlestonHeight + Treatment + Pairing, data = new_df) 
+test_z = lm(Shannon ~ Salinity + CharlestonHeight + Treatment * Temperature + Pairing, data = new_df) 
 summary(test_z)
 plot(test_z)
 
-#Mixed effects model
-abundance_lme = lme(fixed = Abundance ~ Treatment + Salinity + Temperature + CharlestonHeight, random = ~1 | Date/Pairing, data = new_df)
-summary(abundance_lme) #Residuals a little better when log transformed; salinity becomes less "important" when this happens
-anova(abundance_lme)
-plot(abundance_lme)
+test_w = lm(Simpson ~ Salinity + CharlestonHeight + Treatment * Temperature + Pairing, data = new_df)
+summary(test_w)
+plot(test_w)
+
 ```
 
-##Multivariate community composition
+##Drop net sampling; multivariate community composition
 ```{r}
-#Community composition and direct ordination (trying both RDA and CCA)
-marsh = new_df[, c(seq(7, 17))] #All species except for A. heterochaelis
+#Update species matrix; all species except Alpheus heterochaelis
+marsh = new_df[, c(seq(7, 17))] 
 
 #rda analysis
-marsh_rda = rda(sqrt(marsh) ~ Treatment + Temperature + Salinity + CharlestonHeight, data = new_df) #square root transformation makes treatment significant
+marsh_rda = rda(sqrt(marsh) ~ Treatment + Temperature + Salinity + CharlestonHeight, data = new_df)
 marsh_rda
 plot(marsh_rda)
 
+#Significance of constraining variables
 anova(marsh_rda, by = 'margin', permutations = 2000)
-with(new_df, varpart(sqrt(marsh_rda), ifelse(Treatment == 'Mussels', 1, 0),  
-                     data.frame(Temperature, Salinity), CharlestonHeight))
 
 RsquareAdj(marsh_rda)
 
 #cca
 marsh_2 = marsh[rowSums(marsh) != 0,]
 rowSums(marsh_2)
-marsh_cca = cca(marsh_2 ~ Treatment + Temperature + Salinity + CharlestonHeight,                      data = new_df[-c(11, 62, 63, 65, 66, 68, 70),]) #All rows                         have to be greater than zero
+marsh_cca = cca(marsh_2 ~ Treatment + Temperature + Salinity + CharlestonHeight, data = new_df[-c(11, 62, 63, 65, 66, 68, 70),]) #All rows have to be greater than zero
 marsh_cca
 plot(marsh_cca)
-anova(marsh_cca, by = 'margin', permutations = 2000) #Different than the rda analysis. Tidal height becomes much less important. Treatment is way more important. Temperature remains fairly important.
+anova(marsh_cca, by = 'margin', permutations = 2000) 
 
-##NGS (no grass shrimp)
-
-new_df$abun_ngs = rowSums(new_df[, seq(8, 17)]) #no A. heterochaelis right now because of NAs
-
-#abundance model
-test_ngs = lm(log(abun_ngs + 1) ~ Salinity + Temperature + CharlestonHeight + Treatment + Pairing, data = new_df) 
-summary(test_ngs)
-plot(test_ngs)
-
-#NGS rda analysis
-marsh_ngs = new_df[, c(seq(8, 17))] #No P. pugio or A. heterochaelis
-ngs_rda = rda(sqrt(marsh_ngs) ~ Treatment + Temperature + Salinity +
-              CharlestonHeight, data = new_df) 
-#square root transformation makes treatment significant
-ngs_rda
-RsquareAdj(ngs_rda)
-plot(ngs_rda)
-
-anova(ngs_rda, by = 'margin', permutations = 2000)
-with(new_df, varpart(sqrt(marsh_ngs), ifelse(Treatment == 'Mussels', 1, 0),  
-                     data.frame(Temperature, Salinity), CharlestonHeight))
 ```
 
-##Elevation data
+##Sonde relationship with Charleston harbor tidal gauge
 ```{r}
-library(lattice)
-library(ggplot2)
+#files
+september_data = read.csv("~/Documents/Ribbed mussel/Data/Elevation/CSV files/Julien_Legare_092916.csv")
+july_data = read.csv("~/Documents/Ribbed mussel/Data/Elevation/CSV files/High tides_July.csv")
 
+sep_sonde = september_data$Sonde.height.m
+sep_noaa = september_data$Noaa.height
+
+#relationship
+all_sonde = c(july_data$Sonde.high.tides..m., sep_sonde)
+all_noaa = c(july_data$Charleston.high.tides..m., sep_noaa)
+all_tide = data.frame(all_sonde, all_noaa)
+all_lm = lm(all_sonde ~ all_noaa)
+summary(all_lm)
+plot(all_lm)
+
+cor.test(all_sonde, all_noaa)
+
+#Tidal surge from Hurricane Matthew removed
+storm_free = lm(all_sonde[-32] ~ all_noaa[-32])
+summary(storm_free)
+plot(storm_free)
+
+cor.test(all_sonde[-32], all_noaa[-32])
+```
+
+##Distribution models
+```{r}
+#files
 ashgrid = read.csv(("~/Documents/Ribbed mussel/Data/Elevation/CSV files/Ash_grids.csv"))
 
 ashgrid$Mussel.presence = ifelse(ashgrid$Mussel.presence == 'Present', 1, 0)
 
-#All together
+#Original model
 ashglm = glm(Mussel.presence ~ Elevation * Block, family = binomial, data = ashgrid)
 summary(ashglm)
 plot(ashglm)
@@ -108,10 +116,9 @@ anova(full_mod, main_mod, elev_mod, test='LRT')
 AIC(full_mod, main_mod, elev_mod)
 
 anova(elev_mod, elev_mod2, elev_mod4, elev_mod5, test='LRT')
-AIC(elev_mod, elev_mod2, elev_mod4, elev_mod5) #model 4 is the best?
+AIC(elev_mod, elev_mod2, elev_mod4, elev_mod5) #model 4 is the best
 
-#add salinity back in - plot both
-plot(elev_mod2)
+plot(elev_mod4)
 
 new_data = data.frame(Elevation = seq(0, .8, length.out = 50), Block = rep(c("15-20"), each = 50))
 new_data2 = data.frame(Elevation = seq(0, .8, length.out = 50), Block = rep(c("20-25"), each = 50))
@@ -131,25 +138,74 @@ lines(new_data2$Elevation, predict(elev_mod4, newdata=new_data2, type='response'
 ash_plot = ggplot(ashgrid, aes(x = Elevation, y = Mussel.presence))
 ash_plot + geom_point(aes(colour = Block))
 
-xyplot(Mussel.presence ~ Elevation, data = ashgrid)
-
-#Individual salinity blocks
-ashglm.i = glm(Mussel.presence[Grid.ID == "Ash 1"] ~ Elevation[Grid.ID == "Ash 1"], family = binomial, data = ashgrid)
-summary(ashglm.i)
-
-ashglm.ii = glm(Mussel.presence[Grid.ID == "Ash 2"] ~ Elevation[Grid.ID == "Ash 2"], family = binomial, data = ashgrid)
-summary(ashglm.ii)
-
-ashglm.iii = glm(Mussel.presence[Grid.ID == "Ash 3"] ~ Elevation[Grid.ID == "Ash 3"], family = binomial, data = ashgrid)
-summary(ashglm.iii)
-
-ashglm.iv = glm(Mussel.presence[Grid.ID == "Ash 4"] ~ Elevation[Grid.ID == "Ash 4"], family = binomial, data = ashgrid)
-summary(ashglm.iv)
-
-##Figures 
-xyplot(Mussel.presence[Grid.ID == "Ash 1"] ~ Elevation[Grid.ID == "Ash 1"], data = ashgrid)
-xyplot(Mussel.presence[Grid.ID == "Ash 2"] ~ Elevation[Grid.ID == "Ash 2"], data = ashgrid)
-xyplot(Mussel.presence[Grid.ID == "Ash 3"] ~ Elevation[Grid.ID == "Ash 3"], data = ashgrid)
 ```
 
+##Figures
+```{r}
+#Drop net sampling
+std.err = function(x)
+  sd(x)/sqrt(length(x))
+
+new_df$Month = factor(new_df$Month, levels = c("July","August","September","October","November","December", "January", "February", "March"))
+
+  #Sonde relationship
+xyplot(all_sonde[-32] ~ all_noaa[-32], type = c("p","r"), pch=19, col = "black", xlab = "Charleston Harbor height (m)", ylab = "Sol Legare height (m)")
+
+  #Abundance
+df_abundance = new_df %>%
+  filter(Month != "July") %>%
+  group_by(Treatment, Month)%>%
+  summarise(mean(Abundance),std.err(Abundance))
+colnames(df_abundance) = c("Treatment", "Month", "Abundance", "SE.abun")
+
+p_abundance = ggplot(df_abundance, aes(Treatment, Abundance), position="dodge") + facet_grid(~Month)
+p_abundance + geom_bar(stat="identity") + geom_errorbar(aes(ymax = Abundance + SE.abun, ymin = Abundance - SE.abun), width = 0.25) + facet_grid(~Month) + labs(x = expression(Treatment), y = expression(Nekton~abundance~(individuals~m^{-2}))) + theme(axis.title = element_text(size = 15, face = "bold"), strip.text = element_text(size = 13, face = "bold"), axis.text.x = element_text(size = 7,face = "bold"), axis.text.y = element_text(size = 10, face = "bold"))
+
+  #Species richness
+df_richness = new_df %>%
+  filter(Month != "July") %>%
+  group_by(Treatment, Month)%>%
+  summarise(mean(Richness),std.err(Richness))
+colnames(df_richness) = c("Treatment", "Month", "Richness", "SE.rich")
+
+p_richness = ggplot(df_richness, aes(Treatment, Richness), position="dodge") + facet_grid(~Month)
+p_richness + geom_bar(stat="identity") + geom_errorbar(aes(ymax = Richness + SE.rich, ymin = Richness - SE.rich), width = 0.25) + facet_grid(~Month) + labs(x = "Treatment", y = "Species richness") + theme(axis.title = element_text(size = 15, face = "bold"), strip.text = element_text(size = 13, face = "bold"), axis.text.x = element_text(size = 7,face = "bold"), axis.text.y = element_text(size = 10, face = "bold"))
+  
+  #Shannon
+df_shannon = new_df %>%
+  filter(Month != "July") %>%
+  group_by(Treatment, Month)%>%
+  summarise(mean(Shannon),std.err(Shannon))
+colnames(df_shannon) = c("Treatment", "Month", "Shannon", "SE.shan")
+
+p_shannon = ggplot(df_shannon, aes(Treatment, Shannon), position="dodge") + facet_grid(~Month)
+p_shannon + geom_bar(stat="identity") + geom_errorbar(aes(ymax = Shannon + SE.shan, ymin = Shannon - SE.shan), width = 0.25) + facet_grid(~Month) + labs(x = "Treatment", y = "Shannon diversity") + theme(axis.title = element_text(size = 15, face = "bold"), strip.text = element_text(size = 13, face = "bold"), axis.text.x = element_text(size = 7,face = "bold"), axis.text.y = element_text(size = 10, face = "bold"))
+  
+  #Simpson
+df_simpson = new_df %>%
+  filter(Month != "July") %>%
+  group_by(Treatment, Month)%>%
+  summarise(mean(Simpson),std.err(Simpson))
+colnames(df_simpson) = c("Treatment", "Month", "Simpson", "SE.simp")
+
+p_simpson = ggplot(df_simpson, aes(Treatment, Simpson), position="dodge") + facet_grid(~Month)
+p_simpson + geom_bar(stat="identity") + geom_errorbar(aes(ymax = Simpson + SE.simp, ymin = Simpson - SE.simp), width = 0.25) + facet_grid(~Month) + labs(x = "Treatment", y = "Simpson diversity") + theme(axis.title = element_text(size = 15, face = "bold"), strip.text = element_text(size = 13, face = "bold"), axis.text.x = element_text(size = 7,face = "bold"), axis.text.y = element_text(size = 10, face = "bold"))
+  
+  #RDA
+plot(marsh_rda)
+
+  #CCA
+plot(marsh_cca)
+
+#Distribution
+  #Elevation models
+plot(Mussel.presence ~ Elevation, data=ashgrid, pch = 20, col = ashgrid$Block, xlab = "Elevation (m)", ylab = "Geukensia demissa presence")
+legend(-0.1, 1, unique(ashgrid$Block), col = c("red", "black"), pch = 20)
+
+lines(new_data$Elevation, predict(elev_mod4, newdata=new_data, type='response'),
+      col='black')
+lines(new_data2$Elevation, predict(elev_mod4, newdata=new_data2, type='response'),
+      col='red')
+
+```
 ##End
