@@ -5,7 +5,8 @@ output:
   pdf_document: default
   html_document: default
 ---
-##Drop net sampling; linear models
+
+##Distribution models
 ```{r}
 #packages
 library(car)
@@ -16,9 +17,69 @@ library(dplyr)
 library(vegan)
 library(lattice)
 library(ggplot2)
+library(rms)
+library(pscl)
 
 #files
-new_df <- read.csv("~/Documents/Ribbed mussel/Data/Drop net/CSV files/Diversity_abundance.csv")
+ashgrid = read.csv(("~/Documents/Ribbed mussel/Data/Elevation/CSV files/Ash_grids.csv"))
+
+ashgrid$Mussel.presence = ifelse(ashgrid$Mussel.presence == 'Present', 1, 0)
+
+#Original model
+ashglm = glm(Mussel.presence ~ Elevation * Block, family = binomial, data = ashgrid)
+summary(ashglm)
+plot(ashglm)
+
+full_mod = ashglm
+main_mod = update(full_mod, . ~ . - Elevation:Block)
+elev_mod = update(main_mod, . ~ . - Block)
+elev_mod2 = update(elev_mod, . ~ . + I(Elevation^2))
+elev_mod3 = update(elev_mod2, . ~ . + I(Elevation^3))
+elev_mod4 = update(elev_mod2, . ~ . + Block)
+elev_mod5 = update(elev_mod2, . ~ . + Block + Elevation:Block)
+
+anova(full_mod, main_mod, elev_mod, test='LRT')
+AIC(full_mod, main_mod, elev_mod)
+
+anova(elev_mod, elev_mod2, elev_mod4, elev_mod5, test='LRT')
+AIC(elev_mod, elev_mod2, elev_mod4, elev_mod5) #model 4 is the best
+
+plot(elev_mod4)
+
+#model fits; pseudo r^2
+full_r2 = pR2(full_mod)
+main_r2 = pR2(main_mod)
+mod_r2 = pR2(elev_mod)
+mod2_r2 = pR2(elev_mod2)
+mod4_r2 = pR2(elev_mod4)
+mod5_r2 = pR2(elev_mod5)
+
+#plotting data and values predicted by models
+new_data = data.frame(Elevation = seq(0, .8, length.out = 50), Block = rep(c("15-20"), each = 50))
+new_data2 = data.frame(Elevation = seq(0, .8, length.out = 50), Block = rep(c("20-25"), each = 50))
+
+plot(Mussel.presence ~ Elevation, data=ashgrid, pch = 20, col = ashgrid$Block, xlab = "Elevation (m)", ylab = "Geukensia demissa presence")
+legend(-0.1, 1, unique(ashgrid$Block), col = c("red", "black"), pch = 20)
+
+lines(new_data$Elevation, predict(elev_mod, newdata=new_data, type='response'),
+      col='blue')
+lines(new_data$Elevation, predict(elev_mod2, newdata=new_data, type='response'),
+      col='green')
+lines(new_data$Elevation, predict(elev_mod4, newdata=new_data, type='response'),
+      col='black')
+lines(new_data2$Elevation, predict(elev_mod4, newdata=new_data2, type='response'),
+      col='red')
+
+ash_plot = ggplot(ashgrid, aes(x = Elevation, y = Mussel.presence))
+ash_plot + geom_point(aes(colour = Block))
+
+```
+
+##Drop net sampling; linear models
+```{r}
+
+#files
+new_df = read.csv("~/Documents/Ribbed mussel/Data/Drop net/CSV files/Diversity_abundance.csv")
 legare_net = read.csv("~/Documents/Ribbed mussel/Data/Drop net/CSV files/Legare.csv")
 
 #models
@@ -49,6 +110,12 @@ marsh = new_df[, c(seq(7, 17))]
 marsh_rda = rda(sqrt(marsh) ~ Treatment + Temperature + Salinity + CharlestonHeight, data = new_df)
 marsh_rda
 plot(marsh_rda)
+plot(marsh_rda, display=c('sp', 'cn'))
+
+marsh_rda2 = rda(sqrt(marsh) ~ Treatment + Condition(Temperature) +
+                 Condition(Salinity) + Condition(CharlestonHeight),
+                 data = new_df)
+plot(marsh_rda2, display=c('sp', 'cn')) #ordiplot
 
 #Significance of constraining variables
 anova(marsh_rda, by = 'margin', permutations = 2000)
@@ -90,54 +157,6 @@ summary(storm_free)
 plot(storm_free)
 
 cor.test(all_sonde[-32], all_noaa[-32])
-```
-
-##Distribution models
-```{r}
-#files
-ashgrid = read.csv(("~/Documents/Ribbed mussel/Data/Elevation/CSV files/Ash_grids.csv"))
-
-ashgrid$Mussel.presence = ifelse(ashgrid$Mussel.presence == 'Present', 1, 0)
-
-#Original model
-ashglm = glm(Mussel.presence ~ Elevation * Block, family = binomial, data = ashgrid)
-summary(ashglm)
-plot(ashglm)
-
-full_mod = ashglm
-main_mod = update(full_mod, . ~ . - Elevation:Block)
-elev_mod = update(main_mod, . ~ . - Block)
-elev_mod2 = update(elev_mod, . ~ . + I(Elevation^2))
-elev_mod3 = update(elev_mod2, . ~ . + I(Elevation^3))
-elev_mod4 = update(elev_mod2, . ~ . + Block)
-elev_mod5 = update(elev_mod2, . ~ . + Block + Elevation:Block)
-
-anova(full_mod, main_mod, elev_mod, test='LRT')
-AIC(full_mod, main_mod, elev_mod)
-
-anova(elev_mod, elev_mod2, elev_mod4, elev_mod5, test='LRT')
-AIC(elev_mod, elev_mod2, elev_mod4, elev_mod5) #model 4 is the best
-
-plot(elev_mod4)
-
-new_data = data.frame(Elevation = seq(0, .8, length.out = 50), Block = rep(c("15-20"), each = 50))
-new_data2 = data.frame(Elevation = seq(0, .8, length.out = 50), Block = rep(c("20-25"), each = 50))
-
-plot(Mussel.presence ~ Elevation, data=ashgrid, pch = 20, col = ashgrid$Block, xlab = "Elevation (m)", ylab = "Geukensia demissa presence")
-legend(-0.1, 1, unique(ashgrid$Block), col = c("red", "black"), pch = 20)
-
-lines(new_data$Elevation, predict(elev_mod, newdata=new_data, type='response'),
-      col='blue')
-lines(new_data$Elevation, predict(elev_mod2, newdata=new_data, type='response'),
-      col='green')
-lines(new_data$Elevation, predict(elev_mod4, newdata=new_data, type='response'),
-      col='black')
-lines(new_data2$Elevation, predict(elev_mod4, newdata=new_data2, type='response'),
-      col='red')
-
-ash_plot = ggplot(ashgrid, aes(x = Elevation, y = Mussel.presence))
-ash_plot + geom_point(aes(colour = Block))
-
 ```
 
 ##Figures
@@ -206,6 +225,5 @@ lines(new_data$Elevation, predict(elev_mod4, newdata=new_data, type='response'),
       col='black')
 lines(new_data2$Elevation, predict(elev_mod4, newdata=new_data2, type='response'),
       col='red')
-
 ```
 ##End
